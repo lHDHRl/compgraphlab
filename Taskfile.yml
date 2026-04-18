@@ -1,0 +1,76 @@
+version: '3'
+
+vars:
+  CC: gcc
+  CFLAGS: -std=c99 -Wall -Wno-missing-braces -I./raylib/src
+  LDFLAGS: -L./raylib/src -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+
+tasks:
+  build:
+    desc: "Build: task build T=01 V=a"
+    requires:
+      vars: [T, V]
+    cmds:
+      - mkdir -p build
+      - "{{.CC}} {{.CFLAGS}} labs/task{{.T}}/{{.V}}.c -o build/task{{.T}}_{{.V}} {{.LDFLAGS}}"
+
+  run:
+    desc: "Build & run: task run T=01 V=a"
+    requires:
+      vars: [T, V]
+    deps: [{task: build, vars: {T: "{{.T}}", V: "{{.V}}"}}]
+    cmds:
+      - ./build/task{{.T}}_{{.V}}
+
+  all:
+    desc: "Build all variants: task all T=01"
+    requires:
+      vars: [T]
+    cmds:
+      - mkdir -p build
+      - for f in labs/task{{.T}}/*.c; do v=$(basename "$f" .c); echo "--- task{{.T}}/$v ---"; {{.CC}} {{.CFLAGS}} "$f" -o build/task{{.T}}_$v {{.LDFLAGS}} && echo OK || echo FAIL; done
+
+  build-all:
+    desc: "Build everything"
+    cmds:
+      - mkdir -p build
+      - |
+        ok=0; fail=0
+        for f in labs/task*/*.c; do
+          t=$(basename $(dirname "$f") | sed 's/task//')
+          v=$(basename "$f" .c)
+          {{.CC}} {{.CFLAGS}} "$f" -o build/task${t}_${v} {{.LDFLAGS}} 2>&1 && ok=$((ok+1)) || fail=$((fail+1))
+        done
+        echo "OK:$ok FAIL:$fail"
+
+  raylib:
+    desc: "Rebuild raylib"
+    cmds:
+      - cd raylib/src && make PLATFORM=PLATFORM_DESKTOP -j$(nproc)
+
+  clean:
+    cmds:
+      - rm -rf build
+
+  list:
+    desc: "List all tasks and variants"
+    cmds:
+      - |
+        echo "=== Задания ==="
+        echo "task01     — Зад.1  Поворот отрезка (a/b/c)"
+        echo "task02     — Зад.2  Отсечение (a/b/c)"
+        echo "task03     — Зад.3  Фракталы (a/b/c)"
+        echo "task04     — Зад.4  Генерация полигона (a/b/c)"
+        echo "task05     — Зад.5  Триангуляция (a/b/c)"
+        echo "task06     — Зад.6  Проволочная 3D-модель (a/b/c)"
+        echo "task07     — Зад.7  Закраска Гуро/Фонг (a/b/c)"
+        echo "task08_1   — Зад.8.1 Дизеринг (a/b/c)"
+        echo "task08_2   — Зад.8.2 Коррекция цвета (a/b/c)"
+        echo "task08_3   — Зад.8.3 Формат YCrCb (a/b/c)"
+        echo "task11     — Зад.11 Параметрические кривые (a/b/c)"
+        echo "task12a    — Зад.12А Плавающий горизонт (a/b/c)"
+        echo "task12b    — Зад.12Б Z-буфер (a/b/c)"
+        echo "task13     — Зад.13 Трассировка лучей (a/b/c)"
+        echo "task17     — Зад.17 Система частиц (a/b/c)"
+        echo ""
+        echo "Пример: task run T=12b V=c"
